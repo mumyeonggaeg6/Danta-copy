@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limbus Database - Dante's Note copybon</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700&display=swap" rel="stylesheet">
+    <style>
+        .filter-btn[data-filter="burn"].active { color: #ff4d4d !important; border-color: #ff4d4d !important; }
+        .filter-btn[data-filter="bleed"].active { color: #ff944d !important; border-color: #ff944d !important; }
+        .filter-btn[data-filter="tremor"].active { color: #ffe14d !important; border-color: #ffe14d !important; }
+        .filter-btn[data-filter="rupture"].active { color: #4dff4d !important; border-color: #4dff4d !important; }
+        .filter-btn[data-filter="sinking"].active { color: #4d94ff !important; border-color: #4d94ff !important; }
+        .filter-btn[data-filter="charge"].active { color: #4b0082 !important; border-color: #4b0082 !important; }
+        .filter-btn[data-filter="poise"].active { color: #ffffff !important; border-color: #ffffff !important; }
+        .filter-group[data-filter-type="keyword"] .filter-btn.active { background: #ffffff !important; }
+
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            background-color: var(--bg-nav);
+            border-bottom: 1px solid var(--border-line);
+            padding: 0 2rem;
+        }
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto; height: 60px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .nav-menu { display: flex; gap: 1.5rem; }
+        .nav-link {
+            text-decoration: none; color: var(--text-sub);
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .nav-link:hover { color: var(--text-main); }
+        .nav-link.active { color: var(--accent-red); border-bottom: 2px solid var(--accent-red); padding-bottom: 4px; }
+
+        .page-section { display: none; }
+        .page-section.active { display: block; animation: fadeIn 0.3s ease-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-main: #0d0d12;
+            --bg-nav: #15151e;
+            --bg-card: #1a1a24;
+            --text-main: #f0f0f5;
+            --text-sub: #9090a0;
+            --border-line: #2a2a36;
+            --accent-red: #d92d2d;
+            --accent-gold: #e2ba36;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+
+        .logo { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--text-main); text-decoration: none; }
+        .logo span { color: var(--accent-red); }
+
+        main { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
+
+        .filter-section {
+            background-color: var(--bg-nav); border: 1px solid var(--border-line);
+            border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem;
+        }
+        .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+        .filter-label { font-size: 13px; color: var(--text-sub); width: 60px; font-weight: 600; }
+        .filter-btn {
+            background: transparent; border: 1px solid var(--border-line);
+            color: var(--text-main); padding: 6px 14px; border-radius: 6px;
+            font-size: 13px; cursor: pointer; transition: 0.2s;
+        }
+        .filter-btn.active { background: var(--text-main); color: var(--bg-main); font-weight: bold; border-color: var(--text-main); }
+
+        .db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; }
+        .db-card {
+            background-color: var(--bg-card); border: 1px solid var(--border-line);
+            border-radius: 8px; overflow: hidden; cursor: pointer; transition: 0.2s; position: relative;
+        }
+        .db-card.hidden { display: none; }
+        .db-card:hover { transform: translateY(-3px); border-color: var(--accent-gold); }
+        .card-img-placeholder { height: 140px; background: #111; overflow: hidden; border-bottom: 1px solid var(--border-line); }
+        .card-img-placeholder img { width: 100%; height: 100%; object-fit: cover; }
+
+        .rarity-badge {
+            position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7);
+            border: 1px solid var(--accent-gold); color: var(--accent-gold); font-size: 11px;
+            font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 10;
+        }
+        .keyword-badge { position: absolute; top: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 4px; width: 50px; justify-content: flex-end; z-index: 10; }
+        .keyword-badge img { width: 22px; height: 22px; object-fit: contain; background: rgba(176, 167, 167, 0.5); border-radius: 4px; padding: 2px; }
+
+        .card-info { padding: 1rem; }
+        .card-affiliation { font-family: 'Nanum Myeongjo', serif; font-size: 16px; font-weight: 700; color: var(--accent-gold); margin-bottom: 4px; }
+        .card-title { font-size: 18px; font-weight: 800; }
+
+        .search-container { margin-bottom: 1.5rem; }
+        .search-input {
+            width: 100%; padding: 12px 20px; border-radius: 8px;
+            background: var(--bg-card); border: 1px solid var(--border-line);
+            color: var(--text-main); font-size: 14px; outline: none; transition: 0.2s;
+        }
+        .search-input:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 2px rgba(226, 186, 54, 0.2); }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px);
+            z-index: 999; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--bg-card); border: 1px solid var(--border-line);
+            border-radius: 12px; width: 90%; max-width: 450px; padding: 24px; position: relative; text-align: center;
+        }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; color: var(--text-sub); cursor: pointer; }
+        .modal-img { width: 100%; height: 250px; object-fit: cover; border-radius: 8px; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <div class="logo">단붕이의<span>노트</span>copy본</div>
+        <div class="nav-menu">
+            <div class="nav-link active" data-target="section-identity">인격 보기</div>
+            <div class="nav-link" data-target="section-ego">에고 보기</div>
+            <div class="nav-link" data-target="section-contact">문의하기</div>
+        </div>
+    </div>
+</nav>
+
+<main>
+    <section id="section-identity" class="page-section active">
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="이름 또는 소속을 검색하세요...">
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-group" data-filter-type="rarity">
+                <span class="filter-label">등급</span>
+                <button class="filter-btn active" data-filter="all">전체</button>
+                <button class="filter-btn" data-filter="000" style="color:var(--accent-gold)">000</button>
+                <button class="filter-btn" data-filter="00" style="color:#d1d1d1">00</button>
+                <button class="filter-btn" data-filter="0" style="color:#a87462">0</button>
+            </div>
+            <div class="filter-group" data-filter-type="type">
+                <span class="filter-label">속성</span>
+                <button class="filter-btn active" data-filter="all">전체</button>
+                <button class="filter-btn" data-filter="slash">참격</button>
+                <button class="filter-btn" data-filter="pierce">관통</button>
+                <button class="filter-btn" data-filter="blunt">타격</button>
+            </div>
+            <div class="filter-group" data-filter-type="keyword">
+                <span class="filter-label">키워드</span>
+                <button class="filter-btn active" data-filter="all">전체</button>
+                <button class="filter-btn" data-filter="burn">화상</button>
+                <button class="filter-btn" data-filter="bleed">출혈</button>
+                <button class="filter-btn" data-filter="tremor">진동</button>
+                <button class="filter-btn" data-filter="rupture">파열</button>
+                <button class="filter-btn" data-filter="sinking">침잠</button>
+                <button class="filter-btn" data-filter="charge">충전</button>
+                <button class="filter-btn" data-filter="poise">호흡</button>
+            </div>
+        </div>
+        <div class="db-grid" id="identityContainer"></div>
+    </section>
+
+    <section id="section-ego" class="page-section">
+        <h2 style="color: var(--accent-gold);">E.G.O 데이터베이스</h2>
+        <p style="color: var(--text-sub);">준비 중입니다.</p>
+    </section>
+
+    <section id="section-contact" class="page-section">
+        <h2 style="color: var(--accent-red);">문의하기</h2>
+         <p style="color: var(--accent-white);">j8dge8h@gmail.com로</p>
+        <p style="color: var(--text-sub);">관리자에게 메시지를 남겨주세요.</p>
+    </section>
+</main>
+
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-content">
+        <span class="close-btn" id="closeBtn">&times;</span>
+        <img src="" alt="" class="modal-img" id="modalImg">
+        <div id="modalTitle" style="font-size: 20px; font-weight: bold; color: var(--accent-gold);"></div>
+        <div id="modalAffiliation" style="color: var(--text-sub); margin-top: 5px;"></div>
+    </div>
+</div>
+
+<script>
+const iconLib = {
+    burn: "https://i.namu.wiki/i/k_IhIyxOxGpbEBhTDooClA6PBGmrsOfP1wfo_J9u01lFBH5ar-1WKT3ybKumPsf-MNz4ClGgszL3z7f5Z6yW8A.webp",
+    bleed: "https://i.namu.wiki/i/Mzk8cqpQpVUyw1HkVxGA0r6yYK6IZ4MsrZG4c78KrgEBsBy2WiqWDQX-q2y39zWgxVVERghVfmdxePvHU4OM0A.webp",
+    tremor: "https://i.namu.wiki/i/UUVwODKMSl2Sszg8J6EHpiNJTJSST0CcGRush3X5zsZB3JI6EadVPCUPFFisoFoiL2wuYKRCwJd5DYHRCDTX2w.webp",
+    rupture: "https://i.namu.wiki/i/pwZEu9XGTYdzVQfIeSs1XUH_PYCpKXVtI4g63U7MmGXIl2v1pvc--xhsOAKCBE586FyeetXtoArloc4DnFPG0A.webp",
+    sinking: "https://i.namu.wiki/i/-wdH8Feoi0Y7S143X7YLKdoTAF8n38grEY37Y78HqmeiCT0usLnEvv3rdzZzeQLATkd9RnZC7xD-_RL6qTrq1g.webp",
+    poise: "https://i.namu.wiki/i/ZZcNIFQTNtrZ5bB-mrB0X9CKfBTWunkNlMyk8nsQ51vL2zm0i5uzudAf7OZz-N7U85Yk-VmaQ8bnkGkyFf1yLA.webp",
+    charge: "https://i.namu.wiki/i/4KYlHnCS989Ky_yGSrmtBHQbeNGXBP98nbMV2lM9JNn8znEBrFlBBVGiGmLv2Hn3tGQcD0tCRNTub5Io9aljSg.webp",
+    slash: "https://i.namu.wiki/i/y8m1Q73lFiv_QKm8YKiuKeDYygDWs3ItGVCZdKwvbS4EO8mNG0LRfXZo8FODS06r74hXtmNrPZVoe1MKKvxxIQ.webp",
+    blunt: "https://i.namu.wiki/i/k6I9MV2H_g41eEPMLJF_tBO0uDc0IJ4ceuKv-jTSdeTKdI69oNeuFJVd5EBAvcPr9MlSK2OgPMtJHfDw2C7LlA.webp",
+    pierce: "https://i.namu.wiki/i/F260K5g6sCn-3zJruzBFHNf88kqnyW9AN0my4VtmG047J5jhkENxXcjFvHSbrdOIU5Y0bWQJ7TdaeUd2hGWw_w.webp",
+};
+
+const characterData = [
+    { r: "0", t: "slash", k: ["sinking"], a: "LCB 수감자", n: "이상", img: "https://i.namu.wiki/i/zOh_hiRAVkiu5MxM5F2Y5r1I2xcQmIQjjUFE588Cg3xmsbNxCbqt3sLXPOXmJ7idPqNjbDyj-KkqnC-ITn8ZjFrlw9GZHOp-JcW5gHwYWYMEiahu0Ozv-cdNXL5JKTZ6tdS9bIxxqTgz1JxMTPNi0A.webp" },
+    { r: "00", t: "pierce", k: ["rupture"], a: "남부 세븐 협회 6과", n: "이상", img: "https://i.namu.wiki/i/pu-uVB3el23KuUWOCDVIILsAqlpxO0QdM_uTe_xEqoVA8l1YCZWIh0Hg28Lz47iuvAOj2gDieUBW3wbtD_9lCpfDZx4CemH4A5HpLJpiVSEPTr5wNF9pSdiD4XkKOXu0Ag4ST5hIf6sryZCeL1dh-A.webp" },
+    { r: "00", t: "blunt", k: ["tremor"], a: "어금니 사무소 해결사", n: "이상", img: "https://i.namu.wiki/i/KKBEgup15yTDQS1zXiH_EttneslZHEL3kCm7PGPoZWwmu13tJDiV5Z0E7htQ1hYq9OMzqWA09CYaJhKFa4WOd42EQx_f9fTigTkM8ieXRmAUiDHFdb0FBO09P7JGiiAIczU6YJ-skstyDS1QAtMTtQ.webp" },
+    { r: "00", t: "pierce", k: ["bleed", "poise"], a: "피쿼드호 일등 항해사", n: "이상", img: "https://i.namu.wiki/i/x790OKxSxB1xYvIoZje9RYOoEdk9EN_ZQS8eJXKvXlTW5mHrigEuszCX48NXSef4bemxaYcdSLTA6G5T_EzZj2q4LVrUOsaURfI1oUp8QtLljLN02MFzGdhbIXAIMOIZGSUy4z31UxjPHET52FqYsw.webp" },
+    { r: "00", t: "blunt", k: ["sinking"], a: "남부 디에치 협회 4과", n: "이상", img: "https://i.namu.wiki/i/fMXTd91nagCCGkx14kful0nYQ_c3CWT5B_uuVeGj4wcQrLI0WODMjQifNbFyQBrZnU1QU1L-fSt3RWaEjX1kvHIlpUVCsZkosid64MRYjmKdytHMhISm5IqQI9fTpTNUsxMNkhN8zOjWL7CxvOTE7A.webp" },
+    { r: "00", t: "blunt", k: ["rupture"], a: "LCE E.G.O::초롱", n: "이상", img: "https://i.namu.wiki/i/v3c5H5Ksz_H9Y_dLEwHALi4rKDb4Q4Vk5Li_5SuUkJf_0Py2qB9JtpwBNFkTfVGyMi8FWfu9tU2o7uPDZMQvP6guhK7DkYbnweTqpo5BKxSpKsehqGLEwkk9tB_U--q5Ev3riJ4NfwyPLHvxfvOR5w.webp" },
+    { r: "000", t: "slash", k: ["poise"], a: "검계 살수", n: "이상", img: "https://i.namu.wiki/i/hhps7PJ1gUFm9R53uGiS5sBFqr5RW72fTLRiT68Wwainc13KNeQor8Y1p3lpMUF_vTH6vBf4c2BKpjFwiniv1ZpsanvX4Ae2nOLhPkrgz9U9hSJ7G_Q4t7_IP4j1GaYbsqQY18VtBBQiyXsEOkU1iQ.webp" },
+    { r: "000", t: "pierce", k: ["sinking"], a: "개화 E.G.O::동백", n: "이상", img: "https://i.namu.wiki/i/Is6I449mztCxgYTosm2uL3d9ccdG4vvvsTFapyKwFk7zsWQoqsr81f8Mow9KRmy1cVuRAj6P1F_SAiR6rplRHJ1a4Q4E7YRmMNeXmk0L4dFMve8peT1UR4R99KCup6U26hayWHMYuZNyzwp1G6dVxg.webp" },
+    { r: "000", t: "pierce", k: ["rupture", "charge"], a: "W사 3등급 정리 요원", n: "이상", img: "https://i.namu.wiki/i/xfN2C-SN1UzRBUL8aeIYWBcFqF8Y1IoSmkFIUfiDTQ6qI4MvL5BMg2_bAheVQK976s-p0zEto1MFdq-mFsyuM8IqhlDVqQQDPDQvAfCwJDmx1v6q1j1wgndyqIOjcpWxJJO0Z8r0CRKffOkdEJla3A.webp" },
+    { r: "000", t: "pierce", k: ["bleed"], a: "약지 점묘파 스튜던트", n: "이상", img: "https://i.namu.wiki/i/SwN84Za3NCKZaneIlDdUnskqtLcgqi-wP806xLYWTwgPqv5JKEhLvc2kwm7weoc8zcEquhGeZkLYXqdj1se98lOeSDiLpA3G_1MwbYdMacQRvugGiSGEwiTpFgPQY0S8HRjq2LG3fZCPmNYnsn8yvQ.webp" },
+    { r: "000", t: "pierce", k: ["sinking"], a: "로보토미 E.G.O::엄숙한 애도", n: "이상", img: "https://i.namu.wiki/i/ldgv3uAEPHCL1SHYEWionDd4nhpfxZ-tytOvaAZiI4mmNW7nIpwFms8IL68iConkIXxI2yIpkJHd4xdRh2yPKLTPVwxtj2Dc4PCCQh7z5VzRI3vCzQZllMi3GHk9D65DQuuOnXFSOUGyZBneWJZ-Nw.webp" },
+    { r: "000", t: "slash", k: ["burn"], a: "남부 리우 협회 3과", n: "이상", img: "https://i.namu.wiki/i/ZGB7dsBcBZHxc_r9QJ6aO6iHDn5ncl_oft2pDTJKk-2vO0eXwQ0nmx5-tSI6iWYF_eMS1osjI9aCEZ83pFAqlqXzJ9VkVgPODkn0Qp5NQIKuhTk3fb0hljPivlYBBb5o3kFU2MPUncbFupFIkyO7aA.webp" },
+    { r: "000", t: "pierce", k: ["bleed", "poise"], a: "N사 E.G.O::흉탄", n: "이상", img: "https://i.namu.wiki/i/25aah7myMEJvuMRAgwkmiCX788Khl2mxB3AuOT0simweWYpyIhHv-YuSot6Ri4ctIR4ihDJ_Z1YEXJUV8NVhA2A6p_eyY3rKNDY5rS-pBFGz04Zs2neneAKhMNc8-hooeIe-biWLb5rRG5M-NoqcsQ.webp" },
+    { r: "000", t: "slash", k: ["tremor", "rupture"], a: "흑수 - 오 필두", n: "이상", img: "https://i.namu.wiki/i/oKTfDlEWCzJ35d2ibZQSfrc0dIbGUka-Nu4FHRaTuRihzUe4e1K-fps2uZtGIUJHTEXvuvYR0gaRGfsOeN4n1bIBTENSz6JhSp0SztAnpNqL8whJ5vKCN-RgKa3QbC6oEWTwEvBHa6jwnyAPBliTIQ.webp" },
+    { r: "000", t: "slash", k: ["sinking", "poise"], a: "거미집 검지 아비", n: "이상", img: "https://i.namu.wiki/i/cfN6ONFV6NRLRvHgo-fgO8NPLoQ3Aj4YpdtS1w012d7l4SbX7YHEsMFmcFWRee0lr-oaI6vinaSIWuh73Q6aZiBlPEsA7Y5VhFEnBNS8TPW-Xmj_UgLRFVon6vOmceV_Kbe1YHXPz5-zR2tGfjtcrA.webp" },
+    { r: "0", t: "blunt", k: [], a: "LCB 수감자", n: "파우스트", img: "https://i.namu.wiki/i/kwQgNU4D0j5hLbwTB4uswBKeyRXjgTdy1tWsSXkCPb44e8FNXoAbAKC2oIeqeAoM1Fjusi-sxzzNIIuz7vSfk2exSnQMRiHZLGT_yzfl2oy3nte2B2VOvOI5N2iF2L0cxIYKe_-fBLTmCUbNhC4gUQ.webp" },
+    { r: "00", t: "blunt", k: ["charge"], a: "W사 2등급 정리 요원", n: "파우스트", img: "https://i.namu.wiki/i/zHl9uRMM3NTg_aBF73MSp_aQxymprU2oHxL7c10hAZ6OedRNMC-QRNDNEZHLjU-Dhrw9MeKs7uynwKg4AZaRtChUvdChzUMoXrajpfbj1v_F7Uo8jla2t-4OtQr2FJgANhiJmaFf8I5y1FtdYWl2VQ.webp" },
+    { r: "00", t: "slash", k: ["rupture", "poise"], a: "살아남은 로보토미 직원", n: "파우스트", img: "https://i.namu.wiki/i/6gjZl4Hr3cdE1GpQDq_gCqv7NIXC8QV5PzdBL48jBFelVNtqfzLAHojymGE43T-5R3rbSNym9RfBcAYzBn_MvyyCRXucTwnMqy9jBOKZ2ABxTVHPoGV7vdAJICHThZW4H77hcY6Kuyxf--DPJ9XJgg.webp" },
+    { r: "00", t: "slash", k: [], a: "남부 츠바이 협회 4과", n: "파우스트", img: "https://i.namu.wiki/i/ziUjvsfkNbFVSK4m0cfLdc-cCFpGKw6U0RoPvI14HzGr8eBiKzEZsckWFrWCpcGL-0NiKaezbUrVxSsDPdTH72pJudusv10U9j52fMUieUj9RhA98xf0b5lfZq1DaBRVSXWHqK8I9y7AzTI-gmnhEA.webp" },
+    { r: "00", t: "slash", k: ["sinking"], a: "워더링하이츠 버틀러", n: "파우스트", img: "https://i.namu.wiki/i/5mWNg1FTwzR9QSydBbukvbuw4VAlm6iBHgTMzeSq2VTdv1QvDfP5sRIoVnSYYyTAN_0gT7u-W3LiYM4JsozELHuil9cx06hOhbhnz9bVXEFZzWoLmBF8G0nnuTa1IZaKI8Sku0FGUiVrkkkeDJ0flA.webp" },
+    { r: "000", t: "pierce", k: ["bleed"], a: "쥐는 자", n: "파우스트", img: "https://i.namu.wiki/i/B69YJVtj9k31jLbWDRYhNYngx7LYlAQJc_j3hVmQqYweTZ0_Z_nCA-i1ja6B8rQlhJlLmBkD2OXL52x3EKmS5jc-KotcWlWI5YUK3Bahv-R8qd1OCqjNeNvFGGd5JW7-CNTByyBjE7IjTNyo64gehQ.webp" },
+    { r: "000", t: "slash", k: ["rupture"], a: "남부 세븐 협회 4과", n: "파우스트", img: "https://i.namu.wiki/i/W55lT1ODOiCxPJi3S_LYqLI-Al4EDLzZH-18pP7n9wNZMREEtlaGTX5U1SagI9at9oz4k_UVULUitKR1F3cMYUEIgJROle_0oNGHmY-cwLYcafkNxoP2qtjC7wmviXfBRJKLqwMTVV9kVvajkffIsA.webp" },
+    { r: "000", t: "blunt", k: ["tremor"], a: "로보토미 E.G.O::후회", n: "파우스트", img: "https://i.namu.wiki/i/ASDN5_AdF6VmKDy1vcYOb8SQVETUL7Rysk6jEdaden9HRpeqdjPgUlVHv2d1gx4vzU0apOviaCufmZLDL-3awredgC934kDumnRHbo8_3VidLErXyt0LES4E8_EPFkwXRSVB1Q9CmWFEpsDVESFMOQ.webp" },
+    { r: "000", t: "slash", k: ["poise"], a: "검계 살수", n: "파우스트", img: "https://i.namu.wiki/i/OSuq_pP12-EORMpOO2pftRKlIUGY9CYrKUqimFfn5EYH9Z7gJYUsOITwiPZNBP_3aUfE6T7mr97kCgkuWrV36koaCu0UFLrz_iskBxvmmtwpRSY1dU2z2Z58KWyR5d1uY96L0pxPD5dqhblxdHOTYQ.webp" },
+    { r: "000", t: "blunt", k: ["charge"], a: "멀티크랙 사무소 대표", n: "파우스트", img: "https://i.namu.wiki/i/_6u0fhG8a9PjABNSoR8jp8o3kNjw74eKOqnLAyn3rzQFBc-kF0TQqaHx6crl2oV7IAiw0H2tMcN5JGOLuY6T5-2nWk_E8XiwdRSlAu8IHyfsA7PKOuUrBC6oi2zxygfueT5LPDxoxpnu6nG47cD3XA.webp" },
+    { r: "000", t: "blunt", k: ["burn"], a: "LCE E.G.O::홍염살", n: "파우스트", img: "https://i.namu.wiki/i/DSaKSzHxyFZ7d7jKxotJH4wafkariaVtnwSdMJu3oNcWGTvSF_L_F3iaeHe03aA2Xj-Gy6ew1T_-Au0oGW06FAnH_xzGTVmj3I4c5yHcg8Nazbkjg7-LgDFuwQJQk4Dm8Jlanr6aVTBsOO3nhBs86Q.webp" },
+    { r: "000", t: "slash", k: ["rupture"], a: "흑수 - 묘 필두", n: "파우스트", img: "https://i.namu.wiki/i/Z9fHdzzH36RuXQrIYoltJKnWTwh1Km8buhPIoQJd9wRQ15vCvbAyIYWLcsKFOA3vQKc5OIvHqIlB_Sb2VKdSubMjU-vAp__ymOpIK_2zM7smgpk7eMOBDOhuRE5yLrOqQre9CrNxemA5-Oz_WioKNQ.webp" },
+    { r: "000", t: "slash", k: ["bleed", "poise"], a: "동부 시 협회 3과", n: "파우스트", img: "https://i.namu.wiki/i/-F7hcDvAHNRXp6KxJScc1UtE1-PKlVQnNwexSse-cM1uirAYKbO323a7GKxo2XsN-vo6lSPvC4M7yBYjPCzVRpL4KzPit30IlkEXHAhirCTVg0EPD3O18N4jcsYDmw2VjSvEY-CmJI2JU5zoegQTow.webp" },
+    { r: "000", t: "slash", k: ["sinking", "poise"], a: "검지 수행자:【쪽지】", n: "파우스트", img: "https://i.namu.wiki/i/izm3evqjPdI_wTVTkKXCBWA9k3Tm2Xb1lH2RoT-WTrmJP4k4TU_m-8YcZBHF9rNOk1f9R2F54z6HLkrgy8NZT5zBt1uR7rO5KsNyAOj4nh0qdwAMG_-YRnREGFjAIY3IDaBHYeMtMiucixcSghN_yg.webp" },
+    { r: "000", t: "slash", k: ["bleed", "charge"], a: "거미집 약지 제자", n: "파우스트", img: "https://i.namu.wiki/i/ckgwY48j39FWHCkoxrqklBw3UQfO6WK3iMBRwMfeHmKJXJS0Dba1vpLkPU_WB2bdPOMi8JKmItoUSIXsJMD04ygMMCHmj5_EWTu_Xv5GjcVA8lXfYoLQMKfFfZEnUCJdMMmKkStJT0Rk2irASJSKYw.webp" },
+    { r: "0", t: "pierce", k: ["bleed"], a: "LCB 수감자", n: "돈키호테", img: "https://i.namu.wiki/i/dkb3uaxvC2hf46scDlJwde5jFFdAVPI3NgheNeNH5lK6MgV_SbgBEmQLxpD4J6NFRCcGopfwh92I9cbbtAubGSxHb0iVAEb9kRhWzrH6s_JrySw3yQ1SOcSbFbOmHcFctuWbJ6DWiI9MVrgCwpd-5g.webp" },
+    { r: "00", t: "slash", k: ["poise"], a: "남부 시 협회 5과 부장", n: "돈키호테", img: "https://i.namu.wiki/i/FekanikhGSpLX-m9jdUqAnqNhNNdShbX8RHsVnGIsjsalFukmYzDC_Dsa5rytLBAhBk0ZkKpvZOvLtj97vlqkRm6tvG24Q2fNhvGKK7Iryq62ryowtnj3Hz2WqGH3zmyOc691-oQ835voYiIZ4hD6Q.webp" },
+    { r: "00", t: "blunt", k: ["tremor"], a: "N사 중간 망치", n: "돈키호테", img: "https://i.namu.wiki/i/EIp9VkRtZk4YJvuWL7TGxdH_jw0sTfmkXv10FJlg7JizRIrrobKSFRPKE0Xx71754O9jQ7b9BJlRQWmupFStv1AtyfYvwtBDkQaHOWVoOt8xH6hyWvZ6zQ5QwoqC_KogyJVv8aWUwB2nja8UUe646A.webp" },
+    { r: "00", t: "slash", k: ["rupture"], a: "로보토미 E.G.O::초롱", n: "돈키호테", img: "https://i.namu.wiki/i/cL2EazViHIfhWxH5klUtY8F0PLd3N7bkuU8jOzADDBNny_pFZpAKKWOeMokzBDpM55zc6zJ4P67wzMpDfjDCSxXOZny3-vGXAPFOzvn2bNagt-0PXihuveMtyOUAi4ZCNJQXXqRqSiO53OE67pBbXw.webp" },
+    { r: "00", t: "slash", k: ["poise"], a: "검계 살수", n: "돈키호테", img: "https://i.namu.wiki/i/GL9c_Ua_u2BryGBjkD3P93OGjnmQHbVsnjaCxLOpmwHC40q5_SsfRejgEVEOoWVzVQbKqFCit62KMbktYtltAYgsKysgXv0mEE1zk_wpb_ixlMeZE3CDbOHehWdegPEB0IKgq5Tvy37z4ag17uuQxg.webp" },
+    { r: "000", t: "slash", k: ["rupture", "charge"], a: "W사 3등급 정리 요원", n: "돈키호테", img: "https://i.namu.wiki/i/lD1JlYrJY_kwtzOiwO3AjICpQxDIsGq8h1g3KW3Eu-rBj5HOHIvuBmhUtV-Fl24TuqoKkC3ZKKXhcW_cjRgPjWnV8268sQ8ERe0cnA26yJGBjwIsjJXuVz_SKvBmhpch9uAf90uTge6pglfNg8nqHA.webp" },
+    { r: "000", t: "pierce", k: [], a: "남부 섕크 협회 5과 부장", n: "돈키호테", img: "https://i.namu.wiki/i/e1O5lCq4cJb6JWLbZb8MLgXPIGYDQ2SbkZaj2B563X5kWGa7xsWdTlIIPkvKb4xU10xDS46-QxyGFDRjKQfEOZAuShE4LMmAnNGnMcvNvCr9JElkOk1SumNzAheQZbiikme9bwkVNbcu1PQmLWGe1g.webp" },
+    { r: "000", t: "blunt", k: ["bleed"], a: "중지 작은 아우", n: "돈키호테", img: "https://i.namu.wiki/i/Oue-wDglgQBb8kJK3YhewOrYXDfX9zr6_IJGZz6T0nHJgwSzKNgienQyk57CbZdkiTWeag9y0_bQ2VJYm6XtgPoe-cZU3wVmplBj-Pb6l4gMcCeLnbQiOtJeKHBeSvIyU_NUxNjzYqdpOW0Xy5JnIA.webp" },
+    { r: "000", t: "blunt", k: ["tremor"], a: "T사 3등급 징수직 직원", n: "돈키호테", img: "https://i.namu.wiki/i/P15yQbHXxIPiANqzSoYkD4jhJkKjGU2dEdArD4ud4yEKERj47QkjgZM3m2G-9vXZc-6MgTWeWuSreCmsXFkiJxQ9KT1aEdBMk6YpYiu6km0mYsnyYTyjN7HbsAb6MjhiV4HjVr8jNfT7kViU9QmzNQ.webp" },
+    { r: "000", t: "pierce", k: ["bleed"], a: "라만차랜드 실장", n: "돈키호테", img: "https://i.namu.wiki/i/yAiBl3ZoTCuP6pHwL19Hnu2lkLCQcmWRXnvfW5k4Xi1zbpkgdXY_vgCWkHIuTq8aHX2P1OpQ3icUZlH00rAA0aSwSUg4rmi_2g40ixKGE1e6fepeimVM_WSo48XqEigz_am_Fo7Kn4n7Fzz14Y8Oxw.webp" },
+    { r: "000", t: "pierce", k: ["rupture", "poise"], a: "동부 섕크 협회 3과", n: "돈키호테", img: "https://i.namu.wiki/i/YRDKTAaEGV9DI6v1DKJhOGbWeWAcB4TIWfFforRso8nxbyP0r0t5o0K-2J5doPdm0kGqlZGvaS-KpLlI4Ux_JeOgjPmjAUAXouNqGSeAXSCkQ9aj2NwkzSq54pKJr04s9v9--F8sHMY6SAQqUdR5UQ.webp" },
+    { r: "000", t: "blunt", k: ["rupture", "charge"], a: "로보토미 E.G.O::사랑과 증오의 이름으로", n: "돈키호테", img: "https://i.namu.wiki/i/zgBWkhNbsyxjsGq96L3S0AINiI4HvXzCNNmuZStVZaRQfuaOOJsJX8J2QsMVGOhtUJZYD4eHHl2OLIvR0YCpZERo7HiKAxf2WOQOH9BrfurkuaKafiGXkm-zQapC_wj4EVy_uYiuormS8k1qm_skxg.webp" },
+    { r: "000", t: "blunt", k: ["rupture", "sinking"], a: "흑수 - 미", n: "돈키호테", img: "https://i.namu.wiki/i/28orgs-X6Cy_eOR7qXlVpcznqp3z2vrfC79DRLmoVlFalPc2WL4N0CmwRpatTM2S1Vmtr1m2dVUDuUme1LO4za7wsGvgkzTxocoE3Fqx_oy9XTnneOs4yNqKmVA9_bVX23fuF9irLKVSFdTc4L3tEQ.webp" },
+    { r: "000", t: "blunt", k: ["sinking","poise"], a: "검지 대행자 - 개화 E.G.O::대행", n: "돈키호테", img: "https://i.namu.wiki/i/gSvMCc0D4o_hw63H61sF-KQSzr7rm6evJfeffFQo9vUW3q-EK9cLxoHiwDGOqXi4k-ZtXnFPm1lG1XdXLJqOf89nvrf4KVYCmBWSC-tXq2M-f92pNJnYJYb7f64wlPle_F8H__dj5feiZa7Hk_n-Wg.webp" },
+    { r: "0", t: "slash", k: ["poise"], a: "LCB 수감자", n: "로슈", img: "https://i.namu.wiki/i/3TY9CPpSAldZPYiv9pXWFVDnANB24vSjLiLnrjqmyMgknYmlc16R74Ldc8ntuD3Ac1Mn2IhdcjcYx8iGOpnqZfTqciqJl4vZmhI2BgdhR7Fm51NoZL9F6e8SjI-_2WE1dr159lPzBgoxJI1eWPYxBA.webp" },
+    { r: "00", t: "slash", k: ["rupture"], a: "남부 세븐 협회 6과", n: "로슈", img: "https://i.namu.wiki/i/_WwKph-yK_e1R98ADKSorOd1R3e8NK8KqM9DKSYkkxQA4-6iVDknCBm3TOkJfPIkZBOSoraXqNzoXzwgFsqrHUE2H2vMskiLsLmMK7SQcLfnpG1_J2VHpxYShNMRKcKNLaoHntGrRVU4XZXH0q1UKA.webp" },
+    { r: "00", t: "blunt", k: ["tremor", "bleed", "poise"], a: "LCCB 대리", n: "로슈", img: "https://i.namu.wiki/i/LVoJwVX5t-DouJU6KLu6aKBoPKWwCyWhqQnzEGRvv2KsSbDeLltl3TADCbbvAG81LaTqlpEzOgppGXiAUx9PcSqdQRYhTR5rAo3c-238WVjUNW-OPiiJJovhnV8SEM2EtroKP9r_UrCfCwX0kX_BUg.webp" },
+    { r: "00", t: "slash", k: ["burn"], a: "남부 리우 협회 4과", n: "로슈", img: "https://i.namu.wiki/i/NYssIDykHo6vVeHV9gqAU1XhPyKlNWHQwh7Y6R8-yauq-kMdu6ur6xeYFoZRGekdcmoVMsslz-7spGnNdUi8tKQwqRAEhtlAIA8UWrQjNTN8NFswwwsCcE8k5aGy_nz5icCRn3yXRWnWT1xmAW1-FA.webp" },
+    { r: "00", t: "pierce", k: ["tremor"], a: "20구 유로지비", n: "로슈", img: "https://i.namu.wiki/i/7DK75AcSI8kKNsluDrXv9lJ8HPLcWoymjJXa0RrS2nRj2qkvU0yseBMCEYtX7CQ6MMIBRlRec65APurRTgUuUzd1W517hz_0XcQqyOLXr9TOukIKeu_ut3Z7pl_5CY74Xc0eEC9a7U9BPXSDcrEWzQ.webp" },
+    { r: "000", t: "pierce", k: ["bleed"], a: "흑운회 와카슈", n: "로슈", img: "https://i.namu.wiki/i/dZQ1EJMg_SLQ0UNuvsJMg9RUXUqEursRqURLifEWEMnJiwDOUzvWr9IhMC_aBypgbR0qX8tNGfk9lMHK7j3gpSteKxcsO-WLZo6-ntBRQSeJBYAZLuBbdVV-7wpH_C-ynwRh7raui2T41CJrF-xuUg.webp" },
+    { r: "000", t: "slash", k: ["bleed"], a: "료.고.파. 주방장", n: "로슈", img: "https://i.namu.wiki/i/fX8oBQyny9rpl_clV6NBvCMg8WbiLLD-SMW9sxMc6YIBCfSzusE5uB4u7rwg094R53e8kI_wWyfsKb7GC1VdBOFLA_RLTZ1JqNBev8A0EwRkjQ6JEqdH7bDuwCbnLK0G-jfKaobfepaKM27fDp05Pg.webp" },
+    { r: "000", t: "slash", k: ["charge"], a: "W사 3등급 정리 요원", n: "로슈", img: "https://i.namu.wiki/i/OknXfQvG7bpYFzuBMWeX___StUgLDQIzFvROoxPLmE47mCrROvGAmZtt4x86pyQao0zEI28N3gOp4JVeuj-bZb_lnJEc-FtblGE3Plxxul9E5t99D_F0426VHp4oJTvgmtK7jMAqHltrwIpSnc3K4g.webp" },
+    { r: "000", t: "slash", k: ["poise"], a: "에드가 가문 치프 버틀러", n: "로슈", img: "https://i.namu.wiki/i/1LTqCW8TItLZoJyIkPzZ_X83FMOU3_F94rzqdvCfyNkcR3oFgtowmilUyOR_f-YSPXc_joTU8tTRVSMDtGp5BwvTMThvn3YNbUPl9aCPdcdRNnAm9-B_XlEKOikHnC8OlndsCQ_BGF5y-QbiNzm08g.webp" },
+    { r: "000", t: "blunt", k: ["bleed", "charge"], a: "로보토미 E.G.O::적안 · 참회", n: "로슈", img: "https://i.namu.wiki/i/E-mn-w9fg2Heeh7idJmtWEQQ6IakUQUTYr3kEVfyLVJtZnpCviZdUz-EMzuS2cvdpsi3VGfZAqKrU8M35GrfMGWTIR3wQ04q9ZB7bZEqvGyYC8_3D2SIASg8Cxi0MLy7IttDeR0YicVDlZKkp5Iieg.webp" },
+    { r: "000", t: "slash", k: ["rupture"], a: "흑수 - 묘", n: "로슈", img: "https://i.namu.wiki/i/b7JXX8Bc0bSL5pB3tMH_CJ5BnMjauL24unuU2VXJduFPBHV5SO81X0ZQ1qNAY_dra8IHB2kqHb6Jo4cr6hyaypbDnfiMVHacjl94_DN8EwR6K2EVdtV_I8Ynb_qmGh3URHl2nj_kle70Bti00Pakkw.webp" },
+    { r: "000", t: "pierce", k: ["tremor", "bleed"], a: "N사 E.G.O::경멸, 경외", n: "로슈", img: "https://i.namu.wiki/i/nJIt6QR8goH-B12E6xSlzhSm0Eh4gQPPXp9LyUGlTb3DbDBlMVwYYDDaqswlxN1x5dLgN22bSmxNiGBGEejnUibg4Nr4MKlPpAqCoLuTqGXq6JiuN90Y4gVXDZ5f5Br9miT3b-j8wupf9BpqbF0t7g.webp" },
+    { r: "000", t: "pierce", k: ["rupture", "poise"], a: "홍원 방랑무사", n: "로슈", img: "https://i.namu.wiki/i/eCy-bSsn_kEcXlXQv61yyXMos9BWLzPUr9jncU6skyNV1JF3wbc3VKRybF-xHiU7_bOrn9NhOvTq2dcYzoRo8HL6N90vcFgM4yb3vdcfRH9kWekAQajllMmy4pqRZB69aTlMB40VgnxCLgXLJzZ72g.webp" },
+    { r: "000", t: "pierce", k: ["tremor", "sinking"], a: "로보토미 E.G.O::잔향 · 외로움", n: "로슈", img: "https://i.namu.wiki/i/eC5THMd_t6YRGad7aZxAhlEhRYZXZiOL58ME_Z73nxJAPlMLmfj8wAe1hqDr2ybHugaRdbYUVmfbGNYkfc6an1Xh0rOC8EJOttwiIaVBFo2e3prxiDYcGI6XXRnJd47b5IPBHX6yOP4LCJFKkKhGVw.webp" }
+]
+
+function renderCards() {
+    const cont = document.getElementById('identityContainer');
+    cont.innerHTML = characterData.map(c => {
+        const typeIcon = iconLib[c.t] ? `<img src="${iconLib[c.t]}">` : '';
+        const keywordIcons = c.k.map(k => iconLib[k] ? `<img src="${iconLib[k]}">` : '').join('');
+
+        return `
+            <div class="db-card" 
+                data-rarity="${c.r}" 
+                data-type="${c.t}" 
+                data-keyword='${JSON.stringify(c.k)}'
+                data-img="${c.img}"
+                data-name="${c.n}"
+                data-affiliation="${c.a}">
+                <div class="rarity-badge">${c.r}</div>
+                <div class="keyword-badge">
+                    ${typeIcon}
+                    ${keywordIcons}
+                </div>
+                <div class="card-img-placeholder"><img src="${c.img}" loading="lazy"></div>
+                <div class="card-info">
+                    <div class="card-affiliation">${c.a}</div>
+                    <div class="card-title">${c.n}</div>
+                </div>
+            </div>`;
+    }).join('');
+    setupCardEvents();
+}
+
+// 섹션 전환
+document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+        document.getElementById(link.dataset.target).classList.add('active');
+    });
+});
+
+// 검색창 이벤트
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+// 필터 시스템
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const group = btn.parentElement;
+        if (group.dataset.filterType === 'keyword') {
+            if (btn.dataset.filter === 'all') {
+                group.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            } else {
+                group.querySelector('[data-filter="all"]').classList.remove('active');
+                btn.classList.toggle('active');
+                if (!group.querySelector('.active')) group.querySelector('[data-filter="all"]').classList.add('active');
+            }
+        } else {
+            group.querySelector('.active').classList.remove('active');
+            btn.classList.add('active');
+        }
+        applyFilters();
+    });
+});
+
+function applyFilters() {
+    const aR = document.querySelector('.filter-group[data-filter-type="rarity"] .active').dataset.filter;
+    const aT = document.querySelector('.filter-group[data-filter-type="type"] .active').dataset.filter;
+    const aKs = Array.from(document.querySelectorAll('.filter-group[data-filter-type="keyword"] .active')).map(b => b.dataset.filter);
+    const sT = document.getElementById('searchInput').value.toLowerCase().trim();
+
+    document.querySelectorAll('.db-card').forEach(card => {
+        const cardKs = JSON.parse(card.dataset.keyword);
+        const mR = (aR === 'all' || aR === card.dataset.rarity);
+        const mT = (aT === 'all' || aT === card.dataset.type);
+        const mK = (aKs.includes('all') || aKs.every(k => cardKs.includes(k)));
+        const mS = (sT === '' || card.dataset.name.toLowerCase().includes(sT) || card.dataset.affiliation.toLowerCase().includes(sT));
+
+        card.classList.toggle('hidden', !(mR && mT && mK && mS));
+    });
+}
+
+// 모달
+function setupCardEvents() {
+    document.querySelectorAll('.db-card').forEach(card => {
+        card.onclick = () => {
+            document.getElementById('modalImg').src = card.dataset.img;
+            document.getElementById('modalTitle').innerText = card.dataset.name;
+            document.getElementById('modalAffiliation').innerText = card.dataset.affiliation;
+            document.getElementById('detailModal').style.display = 'flex';
+        };
+    });
+}
+
+document.getElementById('closeBtn').onclick = () => document.getElementById('detailModal').style.display = 'none';
+window.onclick = (e) => { if (e.target.id === 'detailModal') document.getElementById('detailModal').style.display = 'none'; };
+
+renderCards();
+</script>
+</body>
+</html>
